@@ -1,0 +1,12 @@
+{
+	"/":
+	{
+		"GET":
+		{
+			"ACTION":"CONCAT",
+			"FILE":"/pages/index.html"
+		}
+		
+	}
+}
+

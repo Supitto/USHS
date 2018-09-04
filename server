@@ -1,0 +1,70 @@
+#! /usr/bin/python3
+
+import socket
+from sys import argv
+import json
+
+path = ""
+
+def recover_page(page_path):
+    with open(page_path, 'r') as f:
+        r = f.read()
+    return r
+
+def parse(req):
+    response = {}
+    try:
+        lines = req.split('\n')
+        upper_header = lines[0]
+        list_buffer = upper_header.split(' ')
+        response.update({'method':list_buffer[0]})
+        response.update({'path':list_buffer[1]})
+        if response['method'] == "GET":
+            return response
+        print(req)
+    except:
+        return None
+
+#função main(ish)
+if __name__ == "__main__":
+
+    print(argv[0])
+    #call path
+    for d in argv[0].split('/')[:-1]: path+= d + '/'
+    
+    #load routes
+    with open(path+'routes.json') as f:
+        routes = json.loads(f.read())
+
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('0.0.0.0', int(argv[1])))
+        s.listen(1)
+
+        while True:
+            #print("Entrei no loop")
+            cli, addr = s.accept()
+            #print("recebeu")
+            req = cli.recv(1024)
+            response = ""
+            #magic
+            http_req = parse(req.decode("UTF-8"))
+            if http_req == None:
+                print("Invalid request")
+                pass
+            elif http_req["path"] in routes.keys():
+                print(http_req)
+                method = routes[http_req["path"]][http_req["method"]]["ACTION"] 
+                if method == "CONCAT":
+                    cli.send('HTTP/1.0 200 OK\n'.encode("UTF-8"))
+                    cli.send('Content-Type: text/html\n'.encode("UTF-8"))
+                    cli.send('\n'.encode("UTF-8"))
+                    response =recover_page(path+routes[http_req['path']]["GET"]["FILE"])
+                elif method == "EXEC":
+                    pass
+            else:
+                print("woof")
+                cli.send('HTTP/1.0 404 Not Found\n'.encode("UTF-8"))
+                response = '\n'
+            cli.send(response.encode("UTF-8"))
+            cli.close()
